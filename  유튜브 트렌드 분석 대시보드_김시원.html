@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>유튜브 트렌드 분석 대시보드</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hanji: '#F5F0E6',
+            hanjiDark: '#EBE3D0',
+            hanjiCard: '#FBF8F1',
+            sumi: '#1C1B18',
+            charcoal: '#3E3A35',
+            washGray: '#767067',
+            cinnabar: '#B82925',
+            cinnabarDark: '#8F1D1A',
+            jade: '#2B6E68',
+            jadeLight: '#E3EFEC',
+            gold: '#B08944',
+            rosewood: '#2A1E19'
+          },
+          fontFamily: {
+            serif: ['"Noto Serif KR"', '"Nanum Myeongjo"', 'serif'],
+            sans: ['"Pretendard"', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #12100E;
+      background-image: radial-gradient(ellipse at 50% 40%, #2b2219 0%, #12100E 70%), radial-gradient(#2a241e 1px, transparent 1px);
+      background-size: 100% 100%, 22px 22px;
+      font-family: 'Noto Serif KR', serif;
+      color: #1C1B18;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    #stage16x9 {
+      width: 1600px;
+      height: 900px;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 16px;
+      box-sizing: border-box;
+      transform-origin: center center;
+      border-radius: 8px;
+      background-color: #F3EDDF;
+      background-image:
+        radial-gradient(ellipse at 18% 0%, rgba(176,137,68,.15), transparent 55%),
+        radial-gradient(ellipse at 100% 100%, rgba(184,41,37,.08), transparent 50%),
+        linear-gradient(180deg, #F7F2E7 0%, #EFE7D4 100%);
+      box-shadow: 0 0 0 5px #2A1E19, 0 0 0 7px #D9B66A, 0 0 0 10px #2A1E19, 0 40px 90px rgba(0,0,0,.85);
+    }
+    .frame-line { position: absolute; inset: 5px; border: 1px solid rgba(176,137,68,.55); border-radius: 5px; pointer-events: none; z-index: 30; }
+    .corner { position: absolute; width: 20px; height: 20px; z-index: 31; pointer-events: none; border-color: #B08944; border-style: solid; }
+    .corner.tl { top: 3px; left: 3px; border-width: 2.5px 0 0 2.5px; border-top-left-radius: 5px; }
+    .corner.tr { top: 3px; right: 3px; border-width: 2.5px 2.5px 0 0; border-top-right-radius: 5px; }
+    .corner.bl { bottom: 3px; left: 3px; border-width: 0 0 2.5px 2.5px; border-bottom-left-radius: 5px; }
+    .corner.br { bottom: 3px; right: 3px; border-width: 0 2.5px 2.5px 0; border-bottom-right-radius: 5px; }
+
+    #mountains { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; z-index: 0; pointer-events: none; opacity: 0.45; }
+    .ink-card {
+      background: linear-gradient(160deg, rgba(253,251,246,.96) 0%, rgba(246,240,227,.93) 100%);
+      border: 1px solid rgba(28,27,24,.16);
+      border-radius: 7px;
+      padding: 8px 12px;
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 6px 14px -8px rgba(42,30,25,.3);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .ink-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2.5px;
+      background: linear-gradient(90deg, #1C1B18 0%, #B82925 55%, #D9B66A 100%);
+      opacity: .85;
+    }
+    .ink-card:hover { border-color: rgba(184,41,37,.5); }
+    .sec-title { position: relative; padding-left: 8px; }
+    .sec-title::before { content: ''; position: absolute; left: 0; top: 15%; bottom: 15%; width: 3px; border-radius: 2px; background: #B82925; }
+    .wm { position: absolute; right: 6px; bottom: -10px; font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: 52px; line-height: 1; color: #1C1B18; opacity: .05; pointer-events: none; }
+    .kpi-num { font-family: 'Nanum Myeongjo', 'Noto Serif KR', serif; font-weight: 800; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+    .cinnabar-seal { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #B82925; color: #B82925; background: rgba(184,41,37,.06); font-weight: 800; padding: 1px 5px; border-radius: 3px; font-size: 10px; line-height: 1.1; white-space: nowrap; }
+    .cinnabar-seal-solid { display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #C93430, #8F1D1A); color: #FBF8F1; border: 1px solid #8F1D1A; font-weight: 800; padding: 2px 6px; border-radius: 3px; font-size: 10.5px; line-height: 1.1; white-space: nowrap; }
+
+    .header-bar { background: linear-gradient(100deg, #2A1E19 0%, #3a2a21 55%, #2A1E19 100%); border: 1px solid #D9B66A; border-radius: 7px; position: relative; overflow: hidden; }
+    .title-shimmer { background: linear-gradient(100deg, #F7F0DD 0%, #FFE9A8 50%, #F7F0DD 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #tourBar { position: absolute; left: 0; bottom: 0; height: 2.5px; width: 0; background: linear-gradient(90deg, #B82925, #E3B15C); }
+
+    .ch-tab {
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-family: 'Noto Serif KR', serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .18s;
+      border: 1px solid rgba(217,182,106,.35);
+      color: #E8DFC9;
+      background: rgba(255,255,255,.05);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ch-tab:hover { background: rgba(217,182,106,.18); border-color: #D9B66A; }
+    .ch-tab.active { background: linear-gradient(135deg, #F7F0DD, #E9DDBE); color: #1C1B18; font-weight: 800; border-color: #D9B66A; box-shadow: 0 0 0 1px #8F1D1A inset; }
+    .ch-tab .dot { color: #D9B66A; font-size: 9px; }
+    .ch-tab.active .dot { color: #B82925; }
+
+    .hdr-btn {
+      padding: 5px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: 'Pretendard', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all .18s;
+      border: 1px solid rgba(217,182,106,.45);
+      color: #F0E6CC;
+      background: rgba(255,255,255,.06);
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .hdr-btn:hover { background: #D9B66A; color: #2A1E19; }
+    .hdr-btn.primary { background: linear-gradient(135deg, #C93430, #8F1D1A); border-color: #E3B15C; color: #fff; font-weight: 800; }
+    .hdr-btn.excel { background: linear-gradient(135deg, #1E7E52, #145A3A); border-color: #65C89A; color: #fff; font-weight: 700; }
+    .hdr-btn.on { background: #D9B66A; color: #2A1E19; }
+
+    .sub-tab { padding: 3px 8px; font-size: 11px; font-family: 'Pretendard', sans-serif; font-weight: 700; border-radius: 4px; transition: all .15s; white-space: nowrap; }
+    .sub-tab.active { background: #1C1B18; color: #F7F0DD; }
+    .sub-tab.inactive { background: #EBE3D0; color: #3E3A35; }
+    .sub-tab.inactive:hover { background: #dfd4bc; }
+
+    .hm-cell { height: 34px; border-radius: 4px; font-family: 'Pretendard', sans-serif; font-size: 10.5px; display: flex; align-items: center; justify-content: center; position: relative; transition: transform .15s; }
+    .hm-cell:hover { transform: scale(1.1); z-index: 2; }
+    .hm-best { outline: 2px solid #1C1B18; outline-offset: 1px; }
+    .hm-best::after { content: 'BEST'; position: absolute; top: -6px; right: -4px; background: #1C1B18; color: #D9B66A; font-family: 'Pretendard', sans-serif; font-size: 7.5px; font-weight: 900; padding: 0 3px; border-radius: 2px; }
+
+    @keyframes stageReveal {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardRefresh {
+      0% { opacity: .58; transform: translateY(7px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes metricPulse {
+      0% { opacity: .55; transform: translateY(4px) scale(.96); }
+      65% { opacity: 1; transform: translateY(-2px) scale(1.04); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    @keyframes titleShimmer {
+      0%, 65%, 100% { background-position: 100% 50%; }
+      82% { background-position: -100% 50%; }
+    }
+    @keyframes mountainDrift {
+      from { transform: translateX(-8px); }
+      to { transform: translateX(8px); }
+    }
+    #stage16x9.motion-ready > header { animation: stageReveal .65s cubic-bezier(.2,.75,.25,1) both; }
+    #stage16x9.motion-ready > section { animation: stageReveal .65s .12s cubic-bezier(.2,.75,.25,1) both; }
+    #stage16x9.motion-ready > main { animation: stageReveal .7s .22s cubic-bezier(.2,.75,.25,1) both; }
+    #stage16x9.motion-ready #mountains { animation: mountainDrift 18s ease-in-out infinite alternate; }
+    #stage16x9.motion-ready .title-shimmer { background-size: 200% 100%; animation: titleShimmer 8s ease-in-out infinite; }
+    #channelTabs .ch-tab { animation: stageReveal .35s both; }
+    #channelTabs .ch-tab:nth-child(2) { animation-delay: .05s; }
+    #channelTabs .ch-tab:nth-child(3) { animation-delay: .1s; }
+    #channelTabs .ch-tab:nth-child(4) { animation-delay: .15s; }
+    #stage16x9.channel-refresh .ink-card { animation: cardRefresh .55s cubic-bezier(.2,.75,.25,1) both; }
+    #stage16x9.channel-refresh section .ink-card:nth-child(2) { animation-delay: .04s; }
+    #stage16x9.channel-refresh section .ink-card:nth-child(3) { animation-delay: .08s; }
+    #stage16x9.channel-refresh section .ink-card:nth-child(4) { animation-delay: .12s; }
+    #stage16x9.channel-refresh section .ink-card:nth-child(5) { animation-delay: .16s; }
+    #stage16x9.channel-refresh section .ink-card:nth-child(6) { animation-delay: .2s; }
+    #stage16x9.channel-refresh .kpi-num { animation: metricPulse .65s cubic-bezier(.2,.75,.25,1) both; }
+    .ink-card { transition: transform .22s ease, border-color .2s, box-shadow .22s; }
+    .ink-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -8px rgba(42,30,25,.38); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+
+    @keyframes stampPulse { 0% { transform: scale(1.4) rotate(-8deg); opacity: .4; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+    .stamp-anim { animation: stampPulse .3s ease-out; }
+
+    #intro { position: absolute; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; border-radius: 8px; display: none; }
+    #intro .door { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(180deg, #2A1E19, #1a120e); transition: transform .9s cubic-bezier(.77,0,.18,1); }
+    #intro .dl { left: 0; border-right: 2px solid #D9B66A; }
+    #intro .dr { right: 0; border-left: 2px solid #D9B66A; }
+    #intro.open .dl { transform: translateX(-102%); }
+    #intro.open .dr { transform: translateX(102%); }
+    #intro .core { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #F7F0DD; transition: opacity .4s; }
+    #intro.open .core { opacity: 0; }
+
+    #apiKeyDialog {
+      width: min(440px, calc(100vw - 32px));
+      max-width: none;
+      padding: 0;
+      border: 1px solid #D9B66A;
+      border-radius: 8px;
+      background: #FBF8F1;
+      color: #1C1B18;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    #apiKeyDialog::backdrop { background: rgba(0,0,0,.72); }
+  </style>
+</head>
+<body>
+  <dialog id="apiKeyDialog" aria-labelledby="apiKeyDialogTitle">
+    <form id="apiKeyForm" class="p-5 font-sans">
+      <h2 id="apiKeyDialogTitle" class="text-lg font-black text-sumi">YouTube 데이터 연결</h2>
+      <p class="mt-2 text-sm text-charcoal">YouTube Data API 키를 입력하면 채널 데이터를 새로 불러옵니다. 입력하지 않고 닫으면 예시 데이터로 계속 볼 수 있습니다.</p>
+      <label for="youtubeApiKeyInput" class="block mt-4 text-sm font-bold text-sumi">API 키</label>
+      <input id="youtubeApiKeyInput" type="password" autocomplete="off" spellcheck="false" required
+        class="mt-1 w-full rounded border border-sumi/30 bg-white px-3 py-2 text-sm focus:border-jade focus:outline-none"
+        placeholder="키는 이 브라우저 탭에서만 사용됩니다">
+      <p class="mt-2 text-xs leading-relaxed text-washGray">키는 저장되지 않습니다. 다만 정적 웹페이지에서는 API 요청 시 브라우저 네트워크 도구에 키가 보일 수 있으므로, Google Cloud에서 HTTP referrer와 YouTube Data API로 제한한 키를 사용하세요.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button type="button" onclick="closeApiKeyDialog()" class="rounded border border-sumi/20 px-3 py-2 text-sm font-bold text-charcoal hover:bg-hanjiDark">예시 데이터로 계속</button>
+        <button type="submit" class="rounded bg-rosewood px-3 py-2 text-sm font-bold text-hanji hover:bg-sumi">불러오기</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="stage16x9">
+    <div class="frame-line"></div>
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+    <svg id="mountains" viewBox="0 0 1600 260" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M-60 260 L-60 160 C120 100 260 180 420 130 C580 80 760 170 940 115 C1120 70 1320 155 1660 95 L1660 260Z" fill="#8c8575" opacity=".32"/>
+      <path d="M-60 260 L-60 210 C140 165 320 220 520 185 C720 150 920 215 1140 175 C1340 140 1500 200 1660 170 L1660 260Z" fill="#5f5a4e" opacity=".38"/>
+    </svg>
+    <canvas id="inkCanvas" width="1600" height="900" class="absolute inset-0 pointer-events-none z-0 opacity-45"></canvas>
+
+    <!-- ROW 1: HEADER BAR (70px) -->
+    <header class="header-bar z-10 flex items-center justify-between gap-2 px-3.5 h-[70px] shrink-0 box-border">
+      <div id="tourBar"></div>
+
+      <!-- 좌측: 인장 + 타이틀 + 4대 채널 탭 -->
+      <div class="flex items-center gap-2 relative z-10 shrink-0">
+        <div class="flex flex-col shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="cinnabar-seal-solid">중화권 미디어</span>
+            <h1 class="text-[17.5px] font-black tracking-tight whitespace-nowrap font-serif">
+              <span class="title-shimmer">유튜브 트렌드 분석 대시보드</span>
+              <span class="text-[#D9B66A] text-[12.5px] font-bold ml-1">流量觀測</span>
+            </h1>
+          </div>
+          <span class="text-[10px] text-[#C9BEA3] font-sans whitespace-nowrap">중화권 미디어 트렌드 분석</span>
+        </div>
+
+        <div class="h-7 w-[1px] bg-[#D9B66A]/35 mx-1 shrink-0"></div>
+        <div id="channelTabs" class="flex items-center gap-1 shrink-0"></div>
+      </div>
+
+      <!-- 우측: 기능 버튼 + 학생 증명사진/학번 카드 -->
+      <div class="flex items-center gap-1.5 relative z-10 shrink-0">
+        <button onclick="openApiKeyDialog()" class="hdr-btn"><i class="fa-brands fa-youtube text-[#D9B66A]"></i><span>YouTube API</span></button>
+        <button id="tourBtn" onclick="toggleTour()" class="hdr-btn"><i class="fa-solid fa-circle-play text-[#D9B66A]"></i><span>자동 순회</span></button>
+        <button onclick="replayIntro()" class="hdr-btn"><i class="fa-solid fa-scroll text-[#D9B66A]"></i><span>인트로</span></button>
+        <!-- 상단 인적사항 & 증명사진 -->
+        <div class="flex items-center gap-2 bg-hanjiCard border border-[#D9B66A] rounded-md px-2 py-1 shadow-inner shrink-0">
+          <div onclick="document.getElementById('photoInput').click()" class="w-[36px] h-[46px] bg-hanjiDark border border-gold rounded overflow-hidden relative cursor-pointer group shrink-0" title="클릭하여 증명사진 교체">
+            <img id="studentPhoto" src="photo.jpg" onerror="this.onerror=null;this.src='https://placehold.co/120x150/EBE3D0/3E3A35?text=PHOTO'" alt="증명사진" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-sumi/75 text-white text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-center leading-tight font-sans">사진<br>교체</div>
+            <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+          </div>
+          <div class="flex flex-col justify-center leading-snug shrink-0">
+            <div class="flex items-center gap-1">
+            <input id="studentName" type="text" value="" placeholder="이름" aria-label="이름" class="w-12 text-[12.5px] font-bold text-sumi bg-transparent border-b border-dashed border-sumi/40 focus:outline-none">
+              <span class="text-[10px] text-washGray">|</span>
+            <input id="studentDept" type="text" value="" placeholder="학번" aria-label="학번" class="w-[150px] text-[10px] text-charcoal font-sans bg-transparent border-b border-dashed border-sumi/30 focus:outline-none">
+            </div>
+          </div>
+          <div id="sealStamp" onclick="stampEffect()" class="w-7 h-7 border-2 border-cinnabar bg-cinnabar/10 rounded flex items-center justify-center text-cinnabar font-serif font-black text-[9px] leading-tight text-center cursor-pointer select-none shrink-0" title="낙관 날인 모션">金時<br>圓印</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ROW 2: 6-COLUMN HIGH-DENSITY KPI STRIP (76px) -->
+    <section class="z-10 grid grid-cols-6 gap-2.5 h-[76px] shrink-0">
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">集</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-database text-sumi text-[10px]"></i> 수집 영상 표본</span><span class="cinnabar-seal">數據規模</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiSampleCount" class="kpi-num text-[21px] text-sumi">100편</span><span id="kpiSampleSplit" class="text-[10px] font-sans font-bold text-charcoal bg-hanjiDark px-1.5 py-0.5 rounded">롱폼 68 · 쇼츠 32</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span>전체 채널 데이터</span><span id="kpiAvgDuration" class="text-jade font-bold">평균 16분 20초</span></div>
+      </div>
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">訂</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-users text-sumi text-[10px]"></i> 구독자 규모</span><span class="cinnabar-seal">訂閱規模</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiSubs" class="kpi-num text-[21px] text-sumi">118만</span><span id="kpiSubsDelta" class="text-[10.5px] font-sans font-bold text-jade bg-jadeLight px-1.5 py-0.5 rounded">+8.4% ▲</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span id="kpiSubsDaily">일평균 +2,840명</span><span id="kpiSubsRank" class="text-sumi font-semibold">중화사 분야 1위</span></div>
+      </div>
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">觀</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-eye text-cinnabar text-[10px]"></i> 누적 · 평균 조회수</span><span class="cinnabar-seal">累計觀看</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiViews" class="kpi-num text-[21px] text-sumi">3.42억</span><span id="kpiViewsDelta" class="text-[10.5px] font-sans font-bold text-jade bg-jadeLight px-1.5 py-0.5 rounded">+11.2% ▲</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span>편당 평균: <strong id="kpiAvgViews" class="text-cinnabar">58.4만 회</strong></span><span id="kpiMaxViews" class="text-sumi font-semibold">최고 342만</span></div>
+      </div>
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">動</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-comments text-jade text-[10px]"></i> 평균 참여율 (ER)</span><span class="cinnabar-seal">互動指數</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiER" class="kpi-num text-[21px] text-cinnabar">6.8%</span><span id="kpiAvgLikes" class="text-[10px] font-sans font-bold text-jade bg-jadeLight px-1.5 py-0.5 rounded">평균 좋아요 1.9만</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span id="kpiAvgComments">편당 댓글 1,420건</span><span class="text-jade font-bold">업종 대비 +2.4x</span></div>
+      </div>
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">智</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles text-gold text-[10px]"></i> AI 주제 적합도</span><span class="cinnabar-seal">智能評分</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiViral" class="kpi-num text-[21px] text-sumi">95.4점</span><span class="text-[10px] font-sans font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded">100점 만점</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span id="kpiHighScoreRatio">핵심관련(90점+): 92편</span><span class="text-cinnabar font-bold">상위 1% 적합도</span></div>
+      </div>
+      <div class="ink-card justify-between py-1.5 px-3"><span class="wm">評</span>
+        <div class="flex items-center justify-between"><span class="text-[11px] text-washGray font-bold flex items-center gap-1"><i class="fa-solid fa-heart text-cinnabar text-[10px]"></i> 댓글 긍정 반응</span><span class="cinnabar-seal">感性指數</span></div>
+        <div class="flex items-baseline justify-between"><span id="kpiSentiment" class="kpi-num text-[21px] text-jade">89%</span><span id="kpiTotalComments" class="text-[10px] font-sans font-bold text-charcoal bg-hanjiDark px-1.5 py-0.5 rounded">표본 18,420건</span></div>
+        <div class="flex items-center justify-between text-[9.5px] font-sans text-washGray"><span id="kpiSentDetail">긍정 89 · 중립 8 · 비판 3</span><span class="text-jade font-bold">긍정 반응 우세</span></div>
+      </div>
+    </section>
+
+    <!-- ROW 3: MAIN 12-COLUMN CONTENT GRID (700px) -->
+    <main class="z-10 grid grid-cols-12 gap-3 h-[700px] shrink-0">
+
+      <!-- 좌측 7컬럼: 채널 분석 (상단 352px + 하단 336px) -->
+      <div class="col-span-7 flex flex-col gap-3 h-[700px]">
+
+        <!-- 좌측 상단 카드 (352px): 차트(7컬럼) + 키워드 세부 성과 통계표(5컬럼) -->
+        <div class="ink-card h-[352px] shrink-0 justify-between">
+          <div class="flex items-center justify-between border-b border-sumi/15 pb-1.5 shrink-0">
+            <div class="flex items-center gap-1.5">
+              <span class="cinnabar-seal-solid">채널분석 1</span>
+              <button id="tabBtnSingle" onclick="switchLeftTopMode('single')" class="sub-tab active">주제·시기별 성과 &amp; 키워드 통계표</button>
+              <button id="tabBtnMulti" onclick="switchLeftTopMode('multi')" class="sub-tab inactive">4대 채널 다중 비교 리포트</button>
+            </div>
+            <div id="singleLegendBox" class="flex items-center gap-1.5">
+              <div class="flex items-center bg-hanjiDark border border-sumi/15 rounded p-0.5 text-[10px] font-sans">
+                <button onclick="changeChartDimension('keyword',this)" class="dim-btn px-2 py-0.5 rounded bg-sumi text-hanji font-bold">주제 키워드별</button>
+                <button onclick="changeChartDimension('monthly',this)" class="dim-btn px-2 py-0.5 rounded text-charcoal hover:bg-hanjiCard transition">월별 추이(1~11월)</button>
+                <button onclick="changeChartDimension('spike',this)" class="dim-btn px-2 py-0.5 rounded text-charcoal hover:bg-hanjiCard transition">100편 시점별 스파이크</button>
+                <button onclick="changeChartDimension('duration',this)" class="dim-btn px-2 py-0.5 rounded text-charcoal hover:bg-hanjiCard transition">길이 구간별</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 뷰 1: 좌측 차트 + 우측 대표 키워드별 세부 성과 통계 테이블 -->
+          <div id="leftSingleView" class="grid grid-cols-12 gap-2.5 h-[298px] items-center pt-1">
+            <div class="col-span-7 flex flex-col justify-between h-full">
+              <div class="flex items-center justify-between text-[10px] font-sans text-washGray px-1">
+                <span id="chartSubCaption" class="font-bold text-sumi">■ 주제 키워드별 평균 조회수(만) &amp; 참여율(ER%)</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 bg-sumi inline-block rounded-sm"></span>롱폼(만)</span>
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 bg-cinnabar inline-block rounded-sm"></span>쇼츠(만)</span>
+                  <span class="flex items-center gap-1"><span class="w-2 h-2 bg-jade inline-block rounded-full"></span>ER%</span>
+                </div>
+              </div>
+              <div class="relative w-full h-[268px]"><canvas id="trendChart"></canvas></div>
+            </div>
+
+            <!-- 우측 5컬럼: 대표 키워드별 세부 성과 통계 테이블 -->
+            <div class="col-span-5 flex flex-col justify-between h-full border-l border-sumi/15 pl-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-sumi font-sans flex items-center gap-1"><i class="fa-solid fa-chart-Simple text-cinnabar text-[10px]"></i> 대표 키워드별 세부 성과 통계</span>
+                <span class="text-[9.5px] font-sans text-washGray">클릭 시 우측 댓글 필터</span>
+              </div>
+              <div class="overflow-hidden border border-sumi/15 rounded bg-hanjiCard flex-1 my-1">
+                <table class="w-full text-left border-collapse font-sans text-[10px]">
+                  <thead>
+                    <tr class="bg-rosewood text-hanji text-[9.5px]">
+                      <th class="py-1 px-1.5">대표 키워드</th>
+                      <th class="py-1 px-1 text-right">영상수</th>
+                      <th class="py-1 px-1 text-right">평균조회</th>
+                      <th class="py-1 px-1 text-right">ER%</th>
+                      <th class="py-1 px-1.5 text-center">AI점수</th>
+                    </tr>
+                  </thead>
+                  <tbody id="keywordStatsTableBody" class="divide-y divide-sumi/10"></tbody>
+                </table>
+              </div>
+              <div id="keywordStatSummary" class="text-[10px] font-sans text-charcoal bg-hanjiDark/70 px-2 py-1 rounded border border-sumi/10 truncate">
+                최고 효율 키워드: <strong class="text-cinnabar">#중국여행</strong> (예시 데이터)
+              </div>
+            </div>
+          </div>
+
+          <!-- 뷰 2: 다중 채널 비교 차트 & 종합 피드백 -->
+          <div id="leftMultiView" class="hidden flex-col justify-between h-[298px] pt-1">
+            <div class="grid grid-cols-12 gap-2.5 h-[228px] items-center">
+              <div class="col-span-6 h-[220px] relative"><canvas id="multiCompareChart"></canvas></div>
+              <div class="col-span-6 overflow-hidden border border-sumi/15 rounded bg-hanjiCard h-[220px]">
+                <table class="w-full text-left border-collapse font-sans text-[10px]">
+                  <thead>
+                    <tr class="bg-rosewood text-hanji">
+                      <th class="py-1.5 px-2">비교 채널명</th>
+                      <th class="py-1.5 px-1 text-right">표본</th>
+                      <th class="py-1.5 px-1 text-right">누적조회</th>
+                      <th class="py-1.5 px-1 text-right">평균조회</th>
+                      <th class="py-1.5 px-1 text-right">참여율</th>
+                      <th class="py-1.5 px-1.5 text-center">AI적합</th>
+                    </tr>
+                  </thead>
+                  <tbody id="multiChannelTableBody" class="divide-y divide-sumi/10"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="bg-hanjiDark/80 border-l-[3px] border-l-cinnabar border border-sumi/15 rounded px-2.5 py-1.5 text-[10.5px] font-sans text-sumi leading-snug">
+              <strong class="text-cinnabar">[4개 채널 비교 분석]</strong> 캡틴따거, 리쯔치, TheKellyYang, 陈铟Mirabelle의 콘텐츠 지표를 비교합니다. 채널을 선택하면 세부 분석을 확인할 수 있습니다. <span class="text-washGray">구독자·조회수 등 정량 수치는 예시 데이터입니다.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 좌측 하단 (336px): 골든타임 히트맵(5컬럼) + 인기 영상 TOP 5 랭킹 테이블(7컬럼) -->
+        <div class="grid grid-cols-12 gap-3 h-[336px] shrink-0">
+          <div class="col-span-5 ink-card h-[336px] justify-between">
+            <div class="flex items-center justify-between border-b border-sumi/15 pb-1 shrink-0">
+              <h3 class="sec-title text-[13px] font-bold text-sumi flex items-center gap-1"><i class="fa-solid fa-clock text-gold text-[12px]"></i> 요일·시간대 골든타임 히트맵</h3>
+              <span id="goldenTimeText" class="text-[10px] font-sans font-bold text-cinnabar bg-cinnabar/10 px-1.5 py-0.5 rounded">최적: 저녁 (19~21시)</span>
+            </div>
+            <div id="heatmapContainer" class="grid grid-cols-8 gap-1 items-center my-auto py-1"></div>
+            <div id="heatmapStatsFooter" class="grid grid-cols-3 gap-1 text-center font-sans text-[9.5px] bg-hanjiDark/60 p-1 rounded border border-sumi/10 shrink-0">
+              <div><span class="text-washGray">주말 집중도</span><div id="hmWeekendRatio" class="font-bold text-cinnabar">96.5% (최고)</div></div>
+              <div><span class="text-washGray">저녁·심야 비중</span><div id="hmNightRatio" class="font-bold text-sumi">68.2%</div></div>
+              <div><span class="text-washGray">권장 업로드</span><div id="hmBestDaySlot" class="font-bold text-jade">금·토 19시</div></div>
+            </div>
+          </div>
+
+          <div class="col-span-7 ink-card h-[336px] justify-between">
+            <div class="flex items-center justify-between border-b border-sumi/15 pb-1 shrink-0">
+              <div class="flex items-center gap-1.5">
+                <span class="cinnabar-seal-solid">채널분석 2</span>
+                <h3 class="sec-title text-[13px] font-bold text-sumi">조회수 랭킹 TOP 5 동영상 &amp; AI 한줄평</h3>
+              </div>
+            </div>
+            <div id="topVideosAndTimestampsBox" class="flex flex-col justify-between gap-1 my-auto h-[286px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 5컬럼: 댓글 분석 & SWOT (상단 292px + 하단 396px) -->
+      <div class="col-span-5 flex flex-col gap-3 h-[700px]">
+
+        <!-- 우측 상단 카드 (292px): AI 댓글 감성 분포 + 5대 반응 레이더 + 5차원 수치 바 -->
+        <div class="ink-card h-[292px] shrink-0 justify-between">
+          <div class="flex items-center justify-between border-b border-sumi/15 pb-1 shrink-0">
+            <div class="flex items-center gap-1.5">
+              <span class="cinnabar-seal-solid">댓글분석 1</span>
+              <h2 class="sec-title text-[13.5px] font-bold text-sumi">AI 댓글 반응 분포 &amp; 5대 반응 차원 정밀 진단</h2>
+            </div>
+            <span class="cinnabar-seal">感性·五維分析</span>
+          </div>
+
+          <div class="grid grid-cols-12 gap-2 items-center h-[212px]">
+            <div class="col-span-4 flex flex-col items-center justify-between h-full py-1 border-r border-sumi/10 pr-1.5">
+              <div class="relative w-[108px] h-[108px]">
+                <canvas id="sentimentDonut"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span id="donutCenterVal" class="kpi-num text-[19px] text-jade">89%</span>
+                  <span class="text-[9px] text-washGray font-sans">긍정 반응</span>
+                </div>
+              </div>
+              <div class="w-full flex flex-col gap-1 text-[9.5px] font-sans mt-1">
+                <div class="flex items-center justify-between bg-jadeLight/70 px-1.5 py-0.5 rounded border border-jade/25"><span class="text-jade font-bold">● 긍정·찬사</span><span id="sentPos" class="font-black text-sumi">89% (16,390건)</span></div>
+                <div class="flex items-center justify-between bg-hanjiDark/70 px-1.5 py-0.5 rounded border border-sumi/15"><span class="text-gold font-bold">● 학술·중립</span><span id="sentNeu" class="font-black text-sumi">8% (1,470건)</span></div>
+                <div class="flex items-center justify-between bg-cinnabar/10 px-1.5 py-0.5 rounded border border-cinnabar/25"><span class="text-cinnabar font-bold">● 비판·논쟁</span><span id="sentNeg" class="font-black text-sumi">3% (560건)</span></div>
+              </div>
+            </div>
+
+            <div class="col-span-5 h-[202px] relative flex items-center justify-center"><canvas id="reactionRadar"></canvas></div>
+
+            <div id="radarScoreBars" class="col-span-3 flex flex-col justify-between h-full py-1 border-l border-sumi/10 pl-2 font-sans text-[9.5px]"></div>
+          </div>
+
+          <div id="radarSummaryText" class="text-[10.5px] font-sans text-charcoal bg-hanjiDark/65 px-2.5 py-1 rounded border-l-[3px] border-l-cinnabar border border-sumi/10 truncate shrink-0"></div>
+        </div>
+
+        <!-- 우측 하단 카드 (396px): [댓글·키워드 점유율] vs [채널별 SWOT 4분면 진단] -->
+        <div class="ink-card h-[396px] shrink-0 justify-between">
+          <div class="flex items-center justify-between border-b border-sumi/15 pb-1 shrink-0">
+            <div class="flex items-center gap-1.5">
+              <span class="cinnabar-seal-solid">댓글분석 2</span>
+              <button id="tabBtnComment" onclick="switchRightBottomMode('comment')" class="sub-tab active">키워드 점유율 &amp; 베스트 댓글 4선</button>
+              <button id="tabBtnSwot" onclick="switchRightBottomMode('swot')" class="sub-tab inactive">채널별 SWOT 전략 진단</button>
+            </div>
+            <div id="commentFilterHeader" class="flex items-center gap-1.5 text-[10px] font-sans">
+              <span id="activeFilterLabel" class="font-bold text-jade">필터: 전체</span>
+              <button onclick="filterKeyword(null)" class="text-cinnabar font-semibold hover:underline">초기화 ↺</button>
+            </div>
+          </div>
+
+          <!-- 탭 1: 키워드 점유율 칩 + 베스트 댓글 4선 -->
+          <div id="rightCommentView" class="flex-1 flex flex-col justify-between min-h-0 pt-1">
+            <div id="keywordCloudBox" class="grid grid-cols-3 gap-1.5 pb-1.5 border-b border-dashed border-sumi/20 shrink-0"></div>
+            <div id="commentsListBox" class="flex-1 flex flex-col justify-between gap-1.5 pt-1.5 min-h-0"></div>
+          </div>
+
+          <!-- 탭 2: 채널별 SWOT 분석 -->
+          <div id="rightSwotView" class="hidden flex-1 flex-col justify-between pt-1.5 min-h-0">
+            <div id="swotGridBox" class="grid grid-cols-2 gap-2 h-[285px]"></div>
+            <div class="bg-gold/15 border border-gold/40 rounded px-2.5 py-1.5 text-[10px] font-sans text-sumi leading-snug shrink-0">
+              <strong class="text-cinnabar"><i class="fa-solid fa-lightbulb mr-1"></i>실전 콘텐츠 전략 인사이트:</strong> 강점(S) 키워드는 시리즈물로 고정 편성하고, 약점(W) 구간은 쇼츠 하이라이트로 보완하며, 기회(O) 키워드에서 신규 유입을 극대화합니다.
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 인트로 오버레이 -->
+    <div id="intro">
+      <div class="door dl"></div><div class="door dr"></div>
+      <div class="core">
+        <div class="text-[120px] font-serif font-black text-[#D9B66A]">龍</div>
+        <div class="text-[26px] font-serif font-black tracking-widest">유튜브 트렌드 분석 대시보드</div>
+        <div class="text-[13px] font-sans text-[#C9BEA3]">중화권 미디어 트렌드 분석</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-4 right-4 bg-sumi text-hanji border border-gold px-3.5 py-2 rounded shadow-xl text-xs font-sans hidden z-50 flex items-center gap-2">
+    <i class="fa-solid fa-circle-check text-jade"></i><span id="toastText">알림</span>
+  </div>
+
+  <script>
+    /* ======================================================================
+       1. 내장 API KEY & 4대 채널 고밀도 데이터셋 생성기
+       ====================================================================== */
+
+    const CHANNELS = {
+      captain: {
+        id: 'captain', tabName: '캡틴따거 (중국 여행·문화)', name: '캡틴따거 - 중국 현지 여행·문화',
+        searchQuery: '캡틴따거 중국 여행 브이로그',
+        subs: '118만', subsDelta: '+8.4% ▲', subsDaily: '일평균 +2,840명', subsRank: '여행·문화 콘텐츠',
+        views: '3.42억', viewsDelta: '+11.2% ▲', avgViewsNum: 58.4, maxViewsText: '최고 342만',
+        er: '6.8%', avgLikesText: '평균 좋아요 1.9만', avgCommentsText: '편당 댓글 1,420건',
+        viral: '95.4점', highScoreText: '핵심관련(90점+): 94편', avgDuration: '평균 18분 40초',
+        sentiment: 89, totalComments: '표본 18,420건', goldenTime: '최적: 저녁 (19~21시)',
+        hmFooter: ['96.5% (최고)', '71.4%', '금·토 19시'],
+        dimensions: {
+          keyword: {
+            caption: '■ 중국 여행·현지 문화 키워드별 평균 조회수(만) & 참여율(ER%)',
+            labels: ['#중국여행', '#중국현지생활', '#중국맛집', '#중국문화체험', '#중국도시탐방', '#중국사람들'],
+            longform: [68.4, 61.2, 55.8, 49.5, 52.1, 44.0],
+            shorts: [94.0, 82.5, 76.0, 68.0, 79.5, 61.0],
+            erLine: [7.4, 7.1, 6.9, 6.5, 6.8, 6.2]
+          },
+          monthly: {
+            caption: '■ 2026년 월별(1월~11월) 조회수 성장 추이 & 참여율(ER%)',
+            labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'],
+            longform: [38, 42, 45, 49, 52, 55, 58, 61, 64, 67, 72],
+            shorts: [52, 58, 63, 68, 72, 78, 82, 86, 91, 95, 102],
+            erLine: [5.9, 6.0, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 7.0]
+          },
+          duration: {
+            caption: '■ 영상 길이(러닝타임) 구간별 조회수 효율 & 참여율(ER%)',
+            labels: ['1분미만(쇼츠)', '5~10분', '10~15분', '15~20분(주력)', '20~30분(심층)', '30분+(통합본)'],
+            longform: [0, 32, 48, 69, 64, 58],
+            shorts: [88, 0, 0, 0, 0, 0],
+            erLine: [7.2, 5.4, 6.1, 7.5, 7.1, 6.8]
+          }
+        },
+        heatmap: [[55,62,78,92],[58,65,82,89],[52,68,86,95],[60,72,80,91],[66,78,92,98],[78,86,96,100],[74,82,94,96]],
+        sentimentSplit: [89, 8, 3], sentCounts: ['16,390건', '1,470건', '560건'],
+        radar: [98, 86, 94, 84, 88],
+        radarSummary: '핵심 강점: 중국 현지 여행 경험과 생생한 문화 소개',
+        keywords: [
+          { tag: '#중국여행', count: 4210, pct: 28, avgV: '68.4만', er: '7.4%', ai: 98 },
+          { tag: '#중국현지생활', count: 3580, pct: 22, avgV: '61.2만', er: '7.1%', ai: 97 },
+          { tag: '#중국맛집', count: 2940, pct: 18, avgV: '55.8만', er: '6.9%', ai: 96 },
+          { tag: '#중국문화체험', count: 2410, pct: 14, avgV: '49.5만', er: '6.5%', ai: 95 },
+          { tag: '#중국도시탐방', count: 1980, pct: 10, avgV: '52.1만', er: '6.8%', ai: 95 },
+          { tag: '#중국사람들', count: 1650, pct: 8, avgV: '44.0만', er: '6.2%', ai: 93 }
+        ],
+        swot: {
+          s: '중국 현지에서 직접 체험하는 여행·생활 콘텐츠와 친근한 진행',
+          w: '해외 촬영과 이동이 필요한 콘텐츠 특성상 제작 여건에 영향을 받을 수 있음',
+          o: '중국 지역별 여행지와 일상 문화를 소개해 시청자 관심 확장',
+          t: '여행 정보 변화가 잦아 최신 정보 확인과 업데이트가 중요'
+        },
+        comments: [
+          { user: 'china_trip', tag: '#중국여행', likes: '4.2천', time: '08:42', sentiment: '긍정·찬사', text: '현지 분위기를 생생하게 보여줘서 중국 여행을 미리 경험하는 기분이에요.' },
+          { user: 'local_vibe', tag: '#중국현지생활', likes: '3.1천', time: '03:18', sentiment: '긍정·찬사', text: '관광지만이 아니라 실제 현지 생활도 볼 수 있어 흥미롭네요.' },
+          { user: 'food_trip', tag: '#중국맛집', likes: '2.4천', time: '14:15', sentiment: '학술·중립', text: '지역마다 다른 음식과 분위기를 함께 소개해줘서 좋습니다.' },
+          { user: 'culture_walk', tag: '#중국문화체험', likes: '1.9천', time: '11:05', sentiment: '긍정·찬사', text: '직접 현지인들과 소통하는 장면이 특히 인상적이에요.' }
+        ],
+        seedTitles: [
+          ['캡틴따거와 함께 보는 중국 현지 여행 브이로그', '#중국여행', 342, '6.8만', '18:42', 99, '중국 여행지의 풍경과 현지 분위기를 담은 영상'],
+          ['중국의 일상은 어떤 모습일까? 현지 생활 체험', '#중국현지생활', 289, '5.9만', '21:15', 98, '현지에서 만난 사람들과 일상을 소개하는 영상'],
+          ['중국 현지 시장과 골목 맛집 둘러보기', '#중국맛집', 234, '4.7만', '16:50', 97, '지역 음식과 시장 풍경을 함께 소개하는 영상'],
+          ['중국 도시 산책: 관광지 밖의 거리 풍경', '#중국도시탐방', 218, '4.4만', '19:30', 98, '도시의 일상적인 풍경과 문화를 담은 영상'],
+          ['현지에서 만나는 중국 문화와 사람들', '#중국사람들', 195, '3.9만', '17:20', 96, '현지인과의 소통을 통해 문화를 소개하는 영상']
+        ]
+      },
+      kellyyang: {
+        id: 'kellyyang', tabName: 'TheKellyYang (중화권)', name: 'TheKellyYang - 중화권 콘텐츠',
+        searchQuery: 'TheKellyYang',
+        subs: '264만', subsDelta: '+6.2% ▲', subsDaily: '일평균 +3,410명', subsRank: '중화권 크리에이터',
+        views: '6.85억', viewsDelta: '+9.5% ▲', avgViewsNum: 42.6, maxViewsText: '최고 195만',
+        er: '5.4%', avgLikesText: '평균 좋아요 1.2만', avgCommentsText: '편당 댓글 1,890건',
+        viral: '92.8점', highScoreText: '핵심관련(90점+): 88편', avgDuration: '평균 24분 15초',
+        sentiment: 74, totalComments: '표본 22,150건', goldenTime: '최적: 출퇴근 (07~09시)',
+        hmFooter: ['88.4%', '64.0%', '월~금 07시'],
+        dimensions: {
+          keyword: {
+            caption: '■ TheKellyYang 콘텐츠 키워드별 평균 조회수(만) & 참여율(ER%)',
+            labels: ['#TheKellyYang', '#중화권브이로그', '#중국문화', '#중국여행', '#중국일상', '#중화권콘텐츠'],
+            longform: [52.4, 48.0, 56.2, 39.5, 36.8, 34.0],
+            shorts: [44.0, 51.0, 49.5, 32.0, 41.0, 29.5],
+            erLine: [5.8, 5.6, 6.1, 5.1, 5.3, 4.9]
+          },
+          monthly: {
+            caption: '■ 2026년 월별(1월~11월) 조회수 추이 & 참여율(ER%)',
+            labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'],
+            longform: [34, 36, 48, 41, 43, 45, 44, 47, 51, 54, 58],
+            shorts: [28, 30, 39, 34, 36, 38, 40, 42, 45, 48, 52],
+            erLine: [4.9, 5.0, 5.6, 5.1, 5.2, 5.3, 5.2, 5.4, 5.5, 5.6, 5.8]
+          },
+          duration: {
+            caption: '■ 영상 길이(러닝타임) 구간별 조회수 효율 & 참여율(ER%)',
+            labels: ['1분미만(쇼츠)', '5~10분', '10~15분', '15~20분', '20~30분(주력)', '30분+(대담)'],
+            longform: [0, 24, 35, 44, 56, 51],
+            shorts: [45, 0, 0, 0, 0, 0],
+            erLine: [5.1, 4.6, 5.0, 5.4, 5.9, 5.7]
+          }
+        },
+        heatmap: [[85,70,88,92],[88,75,90,94],[90,72,92,95],[86,74,89,91],[92,78,94,96],[60,65,75,80],[55,60,72,78]],
+        sentimentSplit: [74, 18, 8], sentCounts: ['16,391건', '3,987건', '1,772건'],
+        radar: [82, 58, 99, 72, 95],
+        radarSummary: '핵심 강점: TheKellyYang의 중화권 콘텐츠와 시청자 소통',
+        keywords: [
+          { tag: '#TheKellyYang', count: 5120, pct: 27, avgV: '52.4만', er: '5.8%', ai: 97 },
+          { tag: '#중화권브이로그', count: 4390, pct: 23, avgV: '48.0만', er: '5.6%', ai: 95 },
+          { tag: '#중국문화', count: 3890, pct: 19, avgV: '56.2만', er: '6.1%', ai: 96 },
+          { tag: '#중국여행', count: 2750, pct: 13, avgV: '39.5만', er: '5.1%', ai: 93 },
+          { tag: '#중국일상', count: 2180, pct: 10, avgV: '36.8만', er: '5.3%', ai: 92 },
+          { tag: '#중화권콘텐츠', count: 1840, pct: 8, avgV: '34.0만', er: '4.9%', ai: 91 }
+        ],
+        swot: {
+          s: 'TheKellyYang 채널의 개성과 중화권 콘텐츠를 중심으로 한 분석',
+          w: '채널의 최신 업로드와 주제 변화에 맞춘 데이터 갱신 필요',
+          o: '중화권 콘텐츠에 관심 있는 시청자와의 접점 확대',
+          t: '검색 결과에 유사한 이름의 채널이나 영상이 섞이지 않도록 출처 확인 필요'
+        },
+        comments: [
+          { user: 'kelly_fan', tag: '#TheKellyYang', likes: '3.8천', time: '04:50', sentiment: '긍정·찬사', text: 'TheKellyYang 콘텐츠를 통해 중화권의 새로운 모습을 알게 되어 좋아요.' },
+          { user: 'vlog_watcher', tag: '#중화권브이로그', likes: '2.9천', time: '11:20', sentiment: '학술·중립', text: '영상 분위기가 자연스러워서 편하게 보기 좋네요.' },
+          { user: 'culture_viewer', tag: '#중국문화', likes: '2.5천', time: '18:05', sentiment: '긍정·찬사', text: '다른 문화와 일상을 접할 수 있어 흥미롭습니다.' },
+          { user: 'kelly_comment', tag: '#중화권콘텐츠', likes: '1.7천', time: '09:12', sentiment: '학술·중립', text: '새 영상도 기다릴게요. 채널의 다양한 콘텐츠를 더 보고 싶어요.' }
+        ],
+        seedTitles: [
+          ['TheKellyYang 대표 콘텐츠와 채널 이야기', '#TheKellyYang', 195, '3.8만', '28:14', 97, '채널의 주요 콘텐츠와 특징을 소개하는 영상'],
+          ['TheKellyYang의 중화권 브이로그', '#중화권브이로그', 162, '3.1만', '25:40', 95, '일상과 현지의 모습을 담은 브이로그'],
+          ['중국 문화와 일상을 알아보는 시간', '#중국문화', 148, '2.9만', '31:05', 96, '중국의 문화와 생활 모습을 소개하는 영상'],
+          ['중화권에서 보내는 하루', '#중국일상', 134, '2.6만', '22:18', 94, '중화권의 일상과 풍경을 담은 영상'],
+          ['TheKellyYang 최신 영상과 시청자 반응', '#중화권콘텐츠', 121, '2.3만', '26:50', 93, '채널의 콘텐츠 흐름과 반응을 살펴보는 영상']
+        ]
+      },
+      liziqi: {
+        id: 'liziqi', tabName: '리쯔치 李子柒 (전통문화)', name: '리쯔치 (李子柒 Liziqi) - 중국 비물질문화유산·전통미학', handle: '@cnliziqi',
+        searchQuery: '李子柒 Liziqi Chinese traditional craft culture',
+        subs: '2,040만', subsDelta: '+14.8% ▲', subsDaily: '일평균 +1.8만 명', subsRank: '전통문화 글로벌 1위',
+        views: '31.8억', viewsDelta: '+16.4% ▲', avgViewsNum: 1420.0, maxViewsText: '최고 4,850만',
+        er: '9.2%', avgLikesText: '평균 좋아요 42만', avgCommentsText: '편당 댓글 3.8만 건',
+        viral: '99.1점', highScoreText: '핵심관련(90점+): 99편', avgDuration: '평균 14분 50초',
+        sentiment: 94, totalComments: '표본 48,900건', goldenTime: '최적: 밤·힐링 (21~23시)',
+        hmFooter: ['99.2% (압도적)', '76.8%', '금~일 21시'],
+        dimensions: {
+          keyword: {
+            caption: '■ 전통문화 주제별 평균 조회수(십만 단위) & 참여율(ER%)',
+            labels: ['#비물질문화유산', '#동양산수화미학', '#전통옻칠공예', '#쓰촨전원사계', '#촉금비단직조', '#문방사우서예'],
+            longform: [485, 390, 420, 340, 365, 310],
+            shorts: [360, 310, 330, 290, 280, 250],
+            erLine: [9.8, 9.3, 9.5, 8.9, 9.1, 8.8]
+          },
+          monthly: {
+            caption: '■ 2026년 월별(1월~11월) 글로벌 조회수 추이 & 참여율(ER%)',
+            labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'],
+            longform: [240, 260, 275, 290, 310, 330, 355, 380, 410, 445, 485],
+            shorts: [180, 195, 210, 225, 240, 260, 280, 305, 330, 355, 390],
+            erLine: [8.6, 8.7, 8.8, 8.9, 9.0, 9.0, 9.1, 9.2, 9.3, 9.4, 9.6]
+          },
+          duration: {
+            caption: '■ 영상 길이(러닝타임) 구간별 조회수 효율 & 참여율(ER%)',
+            labels: ['1분미만(쇼츠)', '5~10분', '10~15분(주력)', '15~20분(다큐)', '20~30분(사계절)', '30분+'],
+            longform: [0, 260, 430, 465, 410, 350],
+            shorts: [340, 0, 0, 0, 0, 0],
+            erLine: [8.8, 8.5, 9.4, 9.7, 9.3, 8.9]
+          }
+        },
+        heatmap: [[55,65,82,95],[52,62,80,94],[58,68,85,96],[60,70,88,97],[68,78,94,99],[82,90,98,100],[80,88,96,98]],
+        sentimentSplit: [94, 5, 1], sentCounts: ['45,966건', '2,445건', '489건'],
+        radar: [96, 72, 85, 100, 78],
+        radarSummary: '핵심 강점: 영상미·동양미학(100점) 및 전통 공예 고증(96점) 글로벌 최고 수준',
+        keywords: [
+          { tag: '#비물질문화유산', count: 8920, pct: 30, avgV: '4,850만', er: '9.8%', ai: 99 },
+          { tag: '#동양산수화미학', count: 7410, pct: 22, avgV: '3,900만', er: '9.3%', ai: 99 },
+          { tag: '#전통옻칠공예', count: 6150, pct: 18, avgV: '4,200만', er: '9.5%', ai: 98 },
+          { tag: '#쓰촨전원사계', count: 5280, pct: 12, avgV: '3,400만', er: '8.9%', ai: 96 },
+          { tag: '#촉금비단직조', count: 4120, pct: 10, avgV: '3,650만', er: '9.1%', ai: 98 },
+          { tag: '#문방사우서예', count: 3690, pct: 8, avgV: '3,100만', er: '8.8%', ai: 97 }
+        ],
+        swot: {
+          s: '비언어적(Non-verbal) 수묵 산수화 영상미와 장인 정신으로 전 세계 94% 찬사 및 2,040만 구독자 확보',
+          w: '1편 제작에 최소 6개월~1년이 소요되어 업로드 주기가 극도로 김',
+          o: '유네스코 등재 중국 비물질문화유산(옻칠·촉금·전통 제지) 복원 프로젝트로 문화 소프트파워 극대화',
+          t: '장기 휴재 발생 시 알고리즘 노출 감소 우려 (과거 명작 리마스터 및 계절별 쇼츠로 보완 가능)'
+        },
+        comments: [
+          { user: 'oriental_art', tag: '#비물질문화유산', likes: '1.2만', time: '07:40', sentiment: '긍정·찬사', text: '대사 한 마디 없이 오직 옻칠과 나전 공예의 장인 정신만으로 전 세계인을 감동시키는 전통문화 콘텐츠의 정수입니다.' },
+          { user: 'hanji_ink', tag: '#동양산수화미학', likes: '8.7천', time: '02:15', sentiment: '긍정·찬사', text: '모든 프레임이 살아 움직이는 수묵 산수화 같네요. 동양 전통 미학이 유튜브에서 어떻게 소비되는지 보여주는 완벽한 사례.' },
+          { user: 'craft_scholar', tag: '#전통옻칠공예', likes: '6.4천', time: '12:10', sentiment: '학술·중립', text: '수백 번 칠하고 깎아내는 조칠은화(雕漆隱花) 기법의 전 과정을 1년 동안 직접 배워 촬영했다는 점이 경이롭습니다.' },
+          { user: 'silk_heritage', tag: '#촉금비단직조', likes: '5.1천', time: '05:30', sentiment: '긍정·찬사', text: '누에고치에서 실을 뽑아 촉금 비단을 짜고 천연 쪽염색을 하는 과정이 한 편의 예술 영화 같습니다.' }
+        ],
+        seedTitles: [
+          ['雕漆隱花: 쓰촨 전통 옻칠·나전칠기 공예 1년의 복원 기록', '#전통옻칠공예', 4850, '112만', '14:26', 99, '중국 비물질문화유산 조칠은화 기법을 완벽 복원한 글로벌 걸작'],
+          ['蜀錦: 촉금 전통 비단 직조와 천연 쪽염색 사계절 다큐멘터리', '#촉금비단직조', 3650, '84만', '15:18', 98, '무언의 산수화 미학으로 동양 직조 문화를 세계에 알린 영상'],
+          ['文房四寶: 전통 선지·송연묵·호필·단연 벼루 제작 전 과정', '#문방사우서예', 3100, '76만', '17:45', 99, '동양 서예 문방사우 제작 공정을 장인 수준으로 고증한 다큐'],
+          ['竹林生活: 대나무 숲 공예와 사계절 쓰촨 전원 밥상 기록', '#쓰촨전원사계', 2980, '69만', '13:50', 97, '자연 친화적 삶과 전통 대나무 가구 제작의 힐링 시너지'],
+          ['活字印刷: 목활자 조판과 전통 한지 인쇄술 복원 프로젝트', '#비물질문화유산', 2740, '63만', '16:10', 98, '고대 동양 인쇄 문화유산을 시각적 미학으로 재해석']
+        ]
+      },
+      mirabelle: {
+        id: 'mirabelle', tabName: '陈铟Mirabelle (중화권)', name: '陈铟Mirabelle - 중화권 콘텐츠',
+        searchQuery: '陈铟 Mirabelle',
+        subs: '385만', subsDelta: '+7.5% ▲', subsDaily: '일평균 +3,920명', subsRank: '중화권 크리에이터',
+        views: '5.12억', viewsDelta: '+10.8% ▲', avgViewsNum: 86.5, maxViewsText: '최고 640만',
+        er: '7.4%', avgLikesText: '평균 좋아요 2.8만', avgCommentsText: '편당 댓글 2,140건',
+        viral: '96.2점', highScoreText: '핵심관련(90점+): 95편', avgDuration: '평균 15분 10초',
+        sentiment: 92, totalComments: '표본 19,800건', goldenTime: '최적: 심야·야식 (21~24시)',
+        hmFooter: ['97.8%', '79.5%', '금~일 22시'],
+        dimensions: {
+          keyword: {
+            caption: '■ 陈铟Mirabelle 콘텐츠 키워드별 평균 조회수(만) & 참여율(ER%)',
+            labels: ['#陈铟Mirabelle', '#중화권브이로그', '#중국문화', '#중국여행', '#중국일상', '#중화권콘텐츠'],
+            longform: [96.0, 88.5, 92.0, 81.4, 76.0, 72.5],
+            shorts: [135.0, 118.0, 128.0, 112.0, 98.0, 105.0],
+            erLine: [8.1, 7.6, 7.9, 7.5, 7.1, 7.3]
+          },
+          monthly: {
+            caption: '■ 2026년 월별(1월~11월) 조회수 추이 & 참여율(ER%)',
+            labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월'],
+            longform: [62, 65, 68, 72, 75, 79, 83, 86, 90, 94, 98],
+            shorts: [85, 90, 94, 99, 105, 110, 116, 121, 126, 132, 139],
+            erLine: [6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.9]
+          },
+          duration: {
+            caption: '■ 영상 길이(러닝타임) 구간별 조회수 효율 & 참여율(ER%)',
+            labels: ['1분미만(쇼츠)', '5~10분', '10~15분(주력)', '15~20분(미식기행)', '20~30분(도시모음)', '30분+'],
+            longform: [0, 68, 94, 91, 84, 76],
+            shorts: [124, 0, 0, 0, 0, 0],
+            erLine: [7.9, 6.8, 7.8, 7.6, 7.2, 7.0]
+          }
+        },
+        heatmap: [[50,68,85,96],[52,70,86,95],[55,72,88,97],[58,75,90,98],[65,82,95,100],[75,88,96,100],[72,85,94,98]],
+        sentimentSplit: [92, 6, 2], sentCounts: ['18,216건', '1,188건', '396건'],
+        radar: [91, 90, 93, 97, 82],
+        radarSummary: '핵심 강점: 陈铟Mirabelle의 중화권 콘텐츠와 시청자 소통',
+        keywords: [
+          { tag: '#陈铟Mirabelle', count: 4890, pct: 26, avgV: '96.0만', er: '8.1%', ai: 98 },
+          { tag: '#중화권브이로그', count: 3920, pct: 21, avgV: '88.5만', er: '7.6%', ai: 97 },
+          { tag: '#중국문화', count: 3410, pct: 18, avgV: '92.0만', er: '7.9%', ai: 96 },
+          { tag: '#중국여행', count: 2870, pct: 14, avgV: '81.4만', er: '7.5%', ai: 96 },
+          { tag: '#중국일상', count: 2350, pct: 12, avgV: '76.0만', er: '7.1%', ai: 94 },
+          { tag: '#중화권콘텐츠', count: 1990, pct: 9, avgV: '72.5만', er: '7.3%', ai: 95 }
+        ],
+        swot: {
+          s: '陈铟Mirabelle 채널의 개성과 중화권 콘텐츠를 중심으로 한 분석',
+          w: '채널의 최신 업로드와 주제 변화에 맞춘 데이터 갱신 필요',
+          o: '중화권 콘텐츠에 관심 있는 시청자와의 접점 확대',
+          t: '검색 결과에 유사한 이름의 채널이나 영상이 섞이지 않도록 출처 확인 필요'
+        },
+        comments: [
+          { user: 'mirabelle_fan', tag: '#陈铟Mirabelle', likes: '5.4천', time: '01:55', sentiment: '긍정·찬사', text: '陈铟Mirabelle 콘텐츠를 통해 중화권의 새로운 모습을 알게 되어 좋아요.' },
+          { user: 'vlog_watcher', tag: '#중화권브이로그', likes: '4.1천', time: '10:45', sentiment: '긍정·찬사', text: '영상 분위기가 자연스러워서 편하게 보기 좋네요.' },
+          { user: 'culture_viewer', tag: '#중국문화', likes: '3.3천', time: '06:30', sentiment: '학술·중립', text: '다른 문화와 일상을 접할 수 있어 흥미롭습니다.' },
+          { user: 'mirabelle_comment', tag: '#중화권콘텐츠', likes: '2.7천', time: '08:15', sentiment: '긍정·찬사', text: '새 영상도 기다릴게요. 채널의 다양한 콘텐츠를 더 보고 싶어요.' }
+        ],
+        seedTitles: [
+          ['陈铟Mirabelle 대표 콘텐츠와 채널 이야기', '#陈铟Mirabelle', 640, '9.4만', '16:12', 98, '채널의 주요 콘텐츠와 특징을 소개하는 영상'],
+          ['陈铟Mirabelle의 중화권 브이로그', '#중화권브이로그', 510, '7.8만', '15:40', 97, '일상과 현지의 모습을 담은 브이로그'],
+          ['중국 문화와 일상을 알아보는 시간', '#중국문화', 430, '6.5만', '14:55', 96, '중국의 문화와 생활 모습을 소개하는 영상'],
+          ['중화권에서 보내는 하루', '#중국일상', 385, '5.9만', '13:20', 95, '중화권의 일상과 풍경을 담은 영상'],
+          ['陈铟Mirabelle 최신 영상과 시청자 반응', '#중화권콘텐츠', 360, '5.4만', '15:05', 96, '채널의 콘텐츠 흐름과 반응을 살펴보는 영상']
+        ]
+      }
+    };
+
+    // 각 채널의 고밀도 비디오 데이터셋 자동 생성
+    function buildFull100VideosPerChannel() {
+      const subTopics = [
+        '브이로그 하이라이트', '현지 풍경 기록', '문화 소개', '일상 이야기',
+        '여행 장면 모음', '시청자 반응', '채널 콘텐츠 돌아보기', '현장 스케치',
+        '인상적인 순간', '새로운 이야기'
+      ];
+      Object.keys(CHANNELS).forEach(chKey => {
+        const ch = CHANNELS[chKey];
+        const list = [];
+        for (let i = 0; i < 100; i++) {
+          const seed = ch.seedTitles[i % ch.seedTitles.length];
+          const kwObj = ch.keywords[i % ch.keywords.length];
+          const decay = Math.max(0.28, 1 - (i * 0.0072));
+          const rawViewsMan = +(seed[2] * decay * (0.92 + ((i * 7) % 17) * 0.01)).toFixed(1);
+          const viewsStr = rawViewsMan >= 1000 ? (rawViewsMan / 100).toFixed(2) + '천만 회' : rawViewsMan + '만 회';
+          const likesMan = +(rawViewsMan * 0.022).toFixed(1);
+          const likesStr = likesMan >= 1 ? likesMan + '만' : Math.round(likesMan * 10000).toLocaleString();
+          const erVal = (parseFloat(ch.er) + ((5 - (i % 9)) * 0.12)).toFixed(1) + '%';
+          const score = Math.min(99, Math.max(88, seed[5] - (i % 6)));
+          const month = String(11 - Math.floor(i / 9.5)).padStart(2, '0');
+          const day = String(28 - (i % 27)).padStart(2, '0');
+          const uploadDate = `2026-${month}-${day}`;
+          const isShort = (i % 3 === 2);
+          const lengthStr = isShort ? `00:${String(42 + (i % 17)).padStart(2, '0')}` : seed[4];
+          const titleStr = i < 5 ? seed[0] : `${seed[0]} · ${subTopics[i % subTopics.length]} ${i + 1}`;
+
+          list.push({
+            id: `${chKey}_v${String(i + 1).padStart(3, '0')}`,
+            title: titleStr,
+            keyword: i < 5 ? seed[1] : kwObj.tag,
+            views: viewsStr,
+            viewsMan: rawViewsMan,
+            likes: likesStr,
+            er: erVal,
+            uploadDate,
+            length: lengthStr,
+            time: `0${(i % 8) + 1}:${String(15 + ((i * 11) % 44)).padStart(2, '0')}`,
+            aiComment: `[Gemini 3.5] ${seed[6]} (표본 #${i + 1} · 적합도 ${score}점)`,
+            score,
+            thumb: `https://placehold.co/120x68/2A1E19/D9B66A?text=${encodeURIComponent(ch.tabName.split(' ')[0])}+${i + 1}`
+          });
+        }
+        ch.topVideos = list;
+      });
+    }
+
+    let currentChannel = 'captain';
+    let currentKeyword = null;
+    let currentDimension = 'keyword';
+    let leftTopMode = 'single';
+    let rightBottomMode = 'comment';
+    let trendChart = null, multiChart = null, donutChart = null, radarChart = null;
+    let currentScale = 1, streamOffset = 0, tourTimer = null, tourRaf = null, updateMotionTimer = null;
+
+    /* ======================================================================
+       2. 초기화 & 16:9 뷰포트 스케일링
+       ====================================================================== */
+    function fitStageToViewport() {
+      const s = document.getElementById('stage16x9');
+      if (!s) return;
+      currentScale = Math.min(window.innerWidth / 1600, window.innerHeight / 900) * 0.98;
+      s.style.transform = `scale(${currentScale})`;
+    }
+    window.addEventListener('resize', fitStageToViewport);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildFull100VideosPerChannel();
+      fitStageToViewport();
+      requestAnimationFrame(() => document.getElementById('stage16x9').classList.add('motion-ready'));
+      initInkWashCanvas();
+      renderChannelPills();
+      initCharts();
+      loadChannel('captain');
+      document.getElementById('apiKeyForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const input = document.getElementById('youtubeApiKeyInput');
+        const ytKey = input.value.trim();
+        if (!ytKey) return;
+        input.value = '';
+        document.getElementById('apiKeyDialog').close();
+        syncYoutubeData(ytKey);
+      });
+      autoFetchAllChannelsOnBoot();
+      setInterval(() => {
+        if (currentKeyword || document.hidden || rightBottomMode !== 'comment') return;
+        streamOffset++;
+        renderComments(CHANNELS[currentChannel].comments);
+      }, 6500);
+    });
+
+    /* ======================================================================
+       3. 상단 채널 탭 & 모드 전환
+       ====================================================================== */
+    function renderChannelPills() {
+      const box = document.getElementById('channelTabs');
+      if (!box) return;
+      box.innerHTML = '';
+      Object.keys(CHANNELS).forEach(key => {
+        const ch = CHANNELS[key];
+        const b = document.createElement('button');
+        b.onclick = () => { stopTour(); selectChannel(key); };
+        b.className = 'ch-tab' + (key === currentChannel ? ' active' : '');
+        b.innerHTML = `<span class="dot">●</span><span>${ch.tabName}</span>`;
+        box.appendChild(b);
+      });
+    }
+
+    function selectChannel(key) {
+      currentChannel = key;
+      currentKeyword = null;
+      streamOffset = 0;
+      animateChannelUpdate();
+      const lbl = document.getElementById('activeFilterLabel');
+      if (lbl) lbl.textContent = '필터: 전체';
+      renderChannelPills();
+      loadChannel(key);
+      stampEffect();
+      spawnInkBurst(800, 450);
+      showToast(`[${CHANNELS[key].name}] 분석 예시로 전환되었습니다.`);
+    }
+
+    function animateChannelUpdate() {
+      const stage = document.getElementById('stage16x9');
+      if (!stage || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      clearTimeout(updateMotionTimer);
+      stage.classList.remove('channel-refresh');
+      void stage.offsetWidth;
+      stage.classList.add('channel-refresh');
+      updateMotionTimer = setTimeout(() => stage.classList.remove('channel-refresh'), 700);
+    }
+
+    function switchLeftTopMode(mode) {
+      leftTopMode = mode;
+      document.getElementById('tabBtnSingle').className = 'sub-tab ' + (mode === 'single' ? 'active' : 'inactive');
+      document.getElementById('tabBtnMulti').className = 'sub-tab ' + (mode === 'multi' ? 'active' : 'inactive');
+      document.getElementById('leftSingleView').className = mode === 'single' ? 'grid grid-cols-12 gap-2.5 h-[298px] items-center pt-1' : 'hidden';
+      document.getElementById('leftMultiView').className = mode === 'multi' ? 'flex flex-col justify-between h-[298px] pt-1' : 'hidden';
+      document.getElementById('singleLegendBox').style.display = mode === 'single' ? 'flex' : 'none';
+      if (mode === 'multi') renderMultiComparisonView();
+    }
+
+    function switchRightBottomMode(mode) {
+      rightBottomMode = mode;
+      document.getElementById('tabBtnComment').className = 'sub-tab ' + (mode === 'comment' ? 'active' : 'inactive');
+      document.getElementById('tabBtnSwot').className = 'sub-tab ' + (mode === 'swot' ? 'active' : 'inactive');
+      document.getElementById('rightCommentView').className = mode === 'comment' ? 'flex-1 flex flex-col justify-between min-h-0 pt-1' : 'hidden';
+      document.getElementById('rightSwotView').className = mode === 'swot' ? 'flex-1 flex flex-col justify-between pt-1.5 min-h-0' : 'hidden';
+      document.getElementById('commentFilterHeader').style.display = mode === 'comment' ? 'flex' : 'none';
+      if (mode === 'swot') renderSwotView(CHANNELS[currentChannel]);
+    }
+
+    /* ======================================================================
+       4. 채널 데이터 로드 & 고밀도 컴포넌트 렌더링
+       ====================================================================== */
+    function loadChannel(key) {
+      const d = CHANNELS[key];
+      document.getElementById('kpiSampleCount').textContent = d.topVideos.length + '편';
+      document.getElementById('kpiAvgDuration').textContent = d.avgDuration;
+      document.getElementById('kpiSubs').textContent = d.subs;
+      document.getElementById('kpiSubsDelta').textContent = d.subsDelta;
+      document.getElementById('kpiSubsDaily').textContent = d.subsDaily;
+      document.getElementById('kpiSubsRank').textContent = d.subsRank;
+      document.getElementById('kpiViews').textContent = d.views;
+      document.getElementById('kpiViewsDelta').textContent = d.viewsDelta;
+      document.getElementById('kpiAvgViews').textContent = d.avgViewsNum + '만 회';
+      document.getElementById('kpiMaxViews').textContent = d.maxViewsText;
+      document.getElementById('kpiER').textContent = d.er;
+      document.getElementById('kpiAvgLikes').textContent = d.avgLikesText;
+      document.getElementById('kpiAvgComments').textContent = d.avgCommentsText;
+      document.getElementById('kpiViral').textContent = d.viral;
+      document.getElementById('kpiHighScoreRatio').textContent = d.highScoreText;
+      document.getElementById('kpiSentiment').textContent = d.sentiment + '%';
+      document.getElementById('kpiTotalComments').textContent = d.totalComments;
+      document.getElementById('kpiSentDetail').textContent = `긍정 ${d.sentimentSplit[0]}% · 중립 ${d.sentimentSplit[1]}% · 비판 ${d.sentimentSplit[2]}%`;
+
+      document.getElementById('goldenTimeText').textContent = d.goldenTime;
+      document.getElementById('hmWeekendRatio').textContent = d.hmFooter[0];
+      document.getElementById('hmNightRatio').textContent = d.hmFooter[1];
+      document.getElementById('hmBestDaySlot').textContent = d.hmFooter[2];
+
+      document.getElementById('donutCenterVal').textContent = d.sentimentSplit[0] + '%';
+      document.getElementById('sentPos').textContent = `${d.sentimentSplit[0]}% (${d.sentCounts[0]})`;
+      document.getElementById('sentNeu').textContent = `${d.sentimentSplit[1]}% (${d.sentCounts[1]})`;
+      document.getElementById('sentNeg').textContent = `${d.sentimentSplit[2]}% (${d.sentCounts[2]})`;
+      document.getElementById('radarSummaryText').textContent = d.radarSummary;
+      renderKeywordStatsTable(d);
+      renderHeatmap(d.heatmap);
+      renderTopVideosAndTimestamps(d.topVideos);
+      renderRadarScoreBars(d.radar);
+      renderKeywords(d.keywords);
+      renderComments(d.comments);
+      renderSwotView(d);
+      applyChartDimension(currentDimension);
+      if (leftTopMode === 'multi') renderMultiComparisonView();
+    }
+
+    function renderKeywordStatsTable(d) {
+      const tbody = document.getElementById('keywordStatsTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      d.keywords.forEach((k, i) => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => filterKeyword(k.tag);
+        tr.className = 'hover:bg-hanjiDark/70 cursor-pointer transition ' + (i === 0 ? 'bg-gold/10 font-bold' : '');
+        tr.innerHTML = `
+          <td class="py-1.5 px-1.5 font-bold text-cinnabar truncate">${k.tag}</td>
+          <td class="py-1.5 px-1 text-right text-charcoal">${k.pct}편</td>
+          <td class="py-1.5 px-1 text-right font-bold text-sumi">${k.avgV}</td>
+          <td class="py-1.5 px-1 text-right font-semibold text-jade">${k.er}</td>
+          <td class="py-1.5 px-1.5 text-center"><span class="px-1.5 py-0.5 rounded bg-jadeLight text-jade font-bold">${k.ai}점</span></td>`;
+        tbody.appendChild(tr);
+      });
+      const top = d.keywords[0];
+      document.getElementById('keywordStatSummary').innerHTML =
+        `최고 성과 키워드: <strong class="text-cinnabar">${top.tag}</strong> (${top.pct}편 · 평균 ${top.avgV} · 적합도 ${top.ai}점)`;
+    }
+
+    function renderRadarScoreBars(radarArr) {
+      const box = document.getElementById('radarScoreBars');
+      if (!box) return;
+      box.innerHTML = '';
+      const labels = ['주제·기획', '정보·전달', '흥미·몰입', '영상미·편집', '시청자 반응'];
+      const colors = ['#B82925', '#B08944', '#2B6E68', '#8F1D1A', '#3E3A35'];
+      labels.forEach((lbl, i) => {
+        const val = radarArr[i];
+        const div = document.createElement('div');
+        div.className = 'flex flex-col gap-0.5';
+        div.innerHTML = `
+          <div class="flex items-center justify-between"><span class="text-charcoal font-semibold">${lbl}</span><span class="font-black text-sumi">${val}점</span></div>
+          <div class="w-full h-1.5 bg-sumi/10 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${val}%;background:${colors[i]}"></div></div>`;
+        box.appendChild(div);
+      });
+    }
+
+    function heatColor(v) {
+      if (v >= 94) return 'linear-gradient(135deg,#D1443F,#8F1D1A)';
+      if (v >= 82) return 'linear-gradient(135deg,#D3A95B,#A07A33)';
+      if (v >= 65) return 'linear-gradient(135deg,#3F8D84,#2B6E68)';
+      return 'linear-gradient(135deg,#EFE8D8,#E2D8C0)';
+    }
+
+    function renderHeatmap(matrix) {
+      const c = document.getElementById('heatmapContainer');
+      if (!c) return;
+      c.innerHTML = '';
+      const days = ['월','화','수','목','금','토','일'];
+      const slots = ['오전','오후','저녁','심야'];
+      const slotDesc = ['오전(06~12시)','오후(12~18시)','저녁(18~22시)','심야(22~02시)'];
+      let max = -1, mi = [0,0];
+      matrix.forEach((r, d) => r.forEach((v, s) => { if (v > max) { max = v; mi = [d, s]; } }));
+
+      const labelCol = document.createElement('div');
+      labelCol.className = 'flex flex-col gap-1 text-center';
+      labelCol.innerHTML = `<span class="text-[10px] font-bold text-washGray font-sans">시간</span>`;
+      slots.forEach(s => {
+        const lbl = document.createElement('div');
+        lbl.className = 'h-[34px] flex items-center justify-center text-[10px] font-bold text-charcoal font-sans bg-hanjiDark/70 rounded';
+        lbl.textContent = s;
+        labelCol.appendChild(lbl);
+      });
+      c.appendChild(labelCol);
+
+      days.forEach((day, dI) => {
+        const col = document.createElement('div');
+        col.className = 'flex flex-col gap-1 text-center';
+        col.innerHTML = `<span class="text-[11px] font-bold text-sumi font-sans">${day}</span>`;
+        matrix[dI].forEach((val, sI) => {
+          const cell = document.createElement('div');
+          const light = val < 65;
+          cell.className = 'hm-cell' + ((dI === mi[0] && sI === mi[1]) ? ' hm-best' : '');
+          cell.style.background = heatColor(val);
+          cell.style.color = light ? '#3E3A35' : '#fff';
+          cell.style.fontWeight = val >= 82 ? '700' : '500';
+          cell.title = `${day}요일 ${slotDesc[sI]}: 시청 반응 밀도 ${val}%`;
+          cell.textContent = val + '%';
+          col.appendChild(cell);
+        });
+        c.appendChild(col);
+      });
+    }
+
+    function renderTopVideosAndTimestamps(videos) {
+      const box = document.getElementById('topVideosAndTimestampsBox');
+      if (!box) return;
+      box.innerHTML = '';
+      const medal = ['#D9B66A','#C0BAAE','#B77B4B','#767067','#767067'];
+      videos.slice(0, 5).forEach((v, idx) => {
+        const div = document.createElement('div');
+        div.className = 'bg-hanjiDark/55 border border-sumi/15 rounded px-2.5 py-1 transition flex flex-col justify-between h-[53px] relative pl-3';
+        div.innerHTML = `
+          <span style="position:absolute;left:0;top:0;bottom:0;width:3.5px;background:${medal[idx]}"></span>
+          <div class="flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="px-1 py-0.2 bg-sumi rounded text-[9.5px] font-sans font-bold shrink-0" style="color:${medal[idx]}">#${idx+1}</span>
+              <span class="text-[9.5px] font-sans font-bold text-cinnabar shrink-0">${v.keyword}</span>
+              <span class="text-[11.5px] font-bold text-sumi truncate">${v.title}</span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 font-sans text-[10px]">
+              <span class="font-bold text-cinnabar"><i class="fa-solid fa-eye mr-0.5 text-[9px]"></i>${v.views}</span>
+              <span class="text-charcoal"><i class="fa-solid fa-heart text-gold mr-0.5 text-[9px]"></i>${v.likes}</span>
+              <span class="text-jade font-bold">ER ${v.er}</span>
+              <span class="px-1 bg-jade/15 text-jade border border-jade/30 rounded font-black text-[9.5px]">AI ${v.score}점</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2 text-[10px] font-sans text-charcoal">
+            <span class="truncate"><strong class="text-cinnabar">[한줄평]</strong> ${v.aiComment.replace('[Gemini 3.5] ','')}</span>
+            <span class="text-washGray shrink-0">${v.uploadDate} · ${v.length}</span>
+          </div>`;
+        box.appendChild(div);
+      });
+    }
+
+    function renderKeywords(kws) {
+      const box = document.getElementById('keywordCloudBox');
+      if (!box) return;
+      box.innerHTML = '';
+      kws.forEach(kw => {
+        const active = currentKeyword === kw.tag;
+        const b = document.createElement('button');
+        b.onclick = () => filterKeyword(kw.tag);
+        b.className = 'px-2 py-1 rounded border text-left transition flex flex-col justify-between ' +
+          (active ? 'bg-cinnabar text-white border-cinnabarDark shadow-sm' : 'bg-hanjiCard hover:bg-hanjiDark border-sumi/20 text-sumi');
+        b.innerHTML = `
+          <div class="flex items-center justify-between w-full text-[11px] font-bold">
+            <span class="truncate">${kw.tag}</span>
+            <span class="text-[9.5px] font-sans ${active ? 'text-hanji' : 'text-cinnabar'}">${kw.pct}%</span>
+          </div>
+          <div class="w-full h-1 bg-sumi/10 rounded-full overflow-hidden my-0.5">
+            <div class="h-full ${active ? 'bg-white' : 'bg-cinnabar'}" style="width:${Math.min(100, kw.pct * 3.2)}%"></div>
+          </div>
+          <div class="flex items-center justify-between w-full text-[9px] font-sans ${active ? 'text-hanji' : 'text-washGray'}">
+            <span>언급 ${kw.count.toLocaleString()}건</span>
+            <span>AI ${kw.ai}점</span>
+          </div>`;
+        box.appendChild(b);
+      });
+    }
+
+    function filterKeyword(tag) {
+      currentKeyword = (tag === null || currentKeyword === tag) ? null : tag;
+      document.getElementById('activeFilterLabel').textContent = currentKeyword ? `필터: ${currentKeyword}` : '필터: 전체';
+      const d = CHANNELS[currentChannel];
+      renderKeywords(d.keywords);
+      renderComments(d.comments);
+    }
+
+    function renderComments(comments) {
+      const box = document.getElementById('commentsListBox');
+      if (!box) return;
+      box.innerHTML = '';
+      const filtered = currentKeyword ? comments.filter(c => c.tag === currentKeyword) : comments;
+      let list = filtered.length > 0 ? filtered : comments;
+      if (!currentKeyword && list.length > 3) {
+        list = list.map((_, i) => list[(i + streamOffset) % list.length]);
+      }
+      list.slice(0, 4).forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'bg-hanjiDark/50 border border-sumi/15 rounded px-2.5 py-1.5 flex gap-2 h-[54px] items-center';
+        item.innerHTML = `
+          <div class="w-[26px] h-[26px] rounded-full shrink-0 flex items-center justify-center font-sans font-bold text-[11px] text-hanji" style="background:linear-gradient(135deg,#3E3A35,#1C1B18);box-shadow:0 0 0 1.5px #D9B66A">${c.user.charAt(0).toUpperCase()}</div>
+          <div class="flex flex-col justify-between min-w-0 flex-1 h-full">
+            <div class="flex items-center justify-between text-[10px] font-sans">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-bold text-sumi truncate">@${c.user}</span>
+                <span class="text-[9px] px-1 rounded bg-jade/15 text-jade font-bold shrink-0">${c.sentiment}</span>
+                <span class="text-[9.5px] text-cinnabar font-bold shrink-0">${c.tag}</span>
+              </div>
+              <span class="text-charcoal font-semibold shrink-0"><i class="fa-solid fa-thumbs-up text-gold mr-0.5"></i>${c.likes}</span>
+            </div>
+            <p class="text-[11px] font-sans text-sumi truncate">“${c.text}”</p>
+          </div>`;
+        box.appendChild(item);
+      });
+    }
+
+    function renderSwotView(d) {
+      const box = document.getElementById('swotGridBox');
+      if (!box) return;
+      const items = [
+        { k: 'S · Strength (강점)', c: 'bg-jadeLight/75 border-jade/40 text-jade', t: d.swot.s },
+        { k: 'W · Weakness (약점)', c: 'bg-cinnabar/10 border-cinnabar/35 text-cinnabar', t: d.swot.w },
+        { k: 'O · Opportunity (기회)', c: 'bg-gold/15 border-gold/40 text-sumi', t: d.swot.o },
+        { k: 'T · Threat (위협)', c: 'bg-hanjiDark border-sumi/25 text-charcoal', t: d.swot.t }
+      ];
+      box.innerHTML = items.map(it => `
+        <div class="border rounded-md p-2.5 flex flex-col justify-between ${it.c}">
+          <div class="text-[11.5px] font-sans font-black">${it.k}</div>
+          <p class="text-[11px] font-sans text-sumi leading-relaxed">${it.t}</p>
+        </div>`).join('');
+    }
+
+    function renderMultiComparisonView() {
+      const keys = Object.keys(CHANNELS);
+      const tbody = document.getElementById('multiChannelTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = keys.map(k => {
+        const c = CHANNELS[k];
+        return `<tr onclick="selectChannel('${k}')" class="hover:bg-hanjiDark/60 cursor-pointer ${k === currentChannel ? 'bg-gold/15 font-bold' : ''}">
+          <td class="py-1.5 px-2 text-sumi truncate">${c.tabName}</td>
+          <td class="py-1.5 px-1 text-right text-charcoal">${c.topVideos.length}편</td>
+          <td class="py-1.5 px-1 text-right text-cinnabar font-bold">${c.views}</td>
+          <td class="py-1.5 px-1 text-right text-sumi">${c.avgViewsNum}만</td>
+          <td class="py-1.5 px-1 text-right text-jade font-bold">${c.er}</td>
+          <td class="py-1.5 px-1.5 text-center"><span class="px-1.5 py-0.5 bg-sumi text-gold rounded font-bold">${c.viral}</span></td>
+        </tr>`;
+      }).join('');
+
+      if (!multiChart) {
+        const ctx = document.getElementById('multiCompareChart').getContext('2d');
+        multiChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: keys.map(k => CHANNELS[k].id === 'liziqi' ? '리쯔치(x10)' : CHANNELS[k].tabName.split(' (')[0]),
+            datasets: [
+              { type: 'line', label: '평균 참여율(ER%)', data: keys.map(k => parseFloat(CHANNELS[k].er)), borderColor: '#B82925', backgroundColor: '#FBF8F1', borderWidth: 2.5, pointRadius: 4, yAxisID: 'y1', order: 0 },
+              { type: 'bar', label: '편당 평균 조회수(만)', data: keys.map(k => CHANNELS[k].id === 'liziqi' ? CHANNELS[k].avgViewsNum / 10 : CHANNELS[k].avgViewsNum), backgroundColor: ['#1C1B18', '#3E3A35', '#B08944', '#2B6E68'], borderRadius: 4, yAxisID: 'y', order: 1 }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } } },
+            scales: {
+              x: { ticks: { font: { size: 10, weight: 'bold' } }, grid: { display: false } },
+              y: { position: 'left', ticks: { font: { size: 9.5 } } },
+              y1: { position: 'right', min: 0, max: 12, grid: { display: false }, ticks: { font: { size: 9.5 }, callback: v => v + '%' } }
+            }
+          }
+        });
+      }
+    }
+
+    /* ======================================================================
+       5. 차트 초기화 & 4차원 전환
+       ====================================================================== */
+    function initCharts() {
+      const d = CHANNELS[currentChannel];
+      const dim = d.dimensions.keyword;
+      Chart.defaults.font.family = 'Pretendard, sans-serif';
+      const ctx = document.getElementById('trendChart').getContext('2d');
+
+      trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: dim.labels,
+          datasets: [
+            { type: 'line', label: '참여율(ER%)', data: dim.erLine, borderColor: '#2B6E68', backgroundColor: '#FBF8F1', borderWidth: 2.5, pointRadius: 4, yAxisID: 'y1', tension: .3, order: 0 },
+            { type: 'bar', label: '롱폼 조회수(만)', data: dim.longform, backgroundColor: '#2A1E19', borderRadius: 4, yAxisID: 'y', order: 1 },
+            { type: 'bar', label: '쇼츠 조회수(만)', data: dim.shorts, backgroundColor: '#B82925', borderRadius: 4, yAxisID: 'y', order: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#1C1B18' } },
+            y: { position: 'left', grid: { color: 'rgba(28,27,24,.07)' }, ticks: { font: { size: 9.5 }, color: '#767067' } },
+            y1: { position: 'right', grid: { display: false }, min: 0, max: 12, ticks: { font: { size: 9.5, weight: 'bold' }, color: '#2B6E68', callback: v => v + '%' } }
+          }
+        }
+      });
+
+      donutChart = new Chart(document.getElementById('sentimentDonut').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['긍정·찬사', '학술·중립', '비판·논쟁'],
+          datasets: [{ data: d.sentimentSplit, backgroundColor: ['#2B6E68', '#B08944', '#B82925'], borderWidth: 2, borderColor: '#FBF8F1' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+      });
+
+      radarChart = new Chart(document.getElementById('reactionRadar').getContext('2d'), {
+        type: 'radar',
+        data: {
+          labels: ['역사·고증', '유머·해학', '정보·통찰', '영상미·미학', '토론·담론'],
+          datasets: [{ label: '반응 지수', data: d.radar, backgroundColor: 'rgba(184,41,37,.22)', borderColor: '#B82925', borderWidth: 2, pointBackgroundColor: '#FBF8F1', pointBorderColor: '#1C1B18', pointRadius: 3 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { r: { min: 40, max: 100, ticks: { display: false }, pointLabels: { font: { family: 'Noto Serif KR', size: 10, weight: 'bold' }, color: '#1C1B18' } } }
+        }
+      });
+    }
+
+    function changeChartDimension(dimKey, btn) {
+      currentDimension = dimKey;
+      document.querySelectorAll('.dim-btn').forEach(b => {
+        b.className = 'dim-btn px-2 py-0.5 rounded text-charcoal hover:bg-hanjiCard transition';
+      });
+      if (btn) btn.className = 'dim-btn px-2 py-0.5 rounded bg-sumi text-hanji font-bold';
+      applyChartDimension(dimKey);
+    }
+
+    function applyChartDimension(dimKey) {
+      if (!trendChart) return;
+      const d = CHANNELS[currentChannel];
+      if (dimKey === 'spike') {
+        const vids = d.topVideos.slice(0, 35).slice().reverse();
+        document.getElementById('chartSubCaption').textContent = '■ 최근 주요 영상 업로드 시점별 조회수 스파이크 추이 (만 회)';
+        trendChart.data.labels = vids.map(v => v.uploadDate.slice(5));
+        trendChart.data.datasets[0].data = vids.map(v => parseFloat(v.er));
+        trendChart.data.datasets[1].data = vids.map(v => v.viewsMan);
+        trendChart.data.datasets[2].data = vids.map(() => 0);
+      } else {
+        const dim = d.dimensions[dimKey] || d.dimensions.keyword;
+        document.getElementById('chartSubCaption').textContent = dim.caption;
+        trendChart.data.labels = dim.labels;
+        trendChart.data.datasets[0].data = dim.erLine;
+        trendChart.data.datasets[1].data = dim.longform;
+        trendChart.data.datasets[2].data = dim.shorts;
+      }
+      trendChart.update();
+      donutChart.data.datasets[0].data = d.sentimentSplit;
+      donutChart.update();
+      radarChart.data.datasets[0].data = d.radar;
+      radarChart.update();
+    }
+
+    /* ======================================================================
+       6. 백그라운드 YOUTUBE API 자동 동기화
+       ====================================================================== */
+    async function autoFetchAllChannelsOnBoot() {
+      openApiKeyDialog();
+    }
+
+    function openApiKeyDialog() {
+      const dialog = document.getElementById('apiKeyDialog');
+      if (!dialog.open) dialog.showModal();
+      document.getElementById('youtubeApiKeyInput').focus();
+    }
+
+    function closeApiKeyDialog() {
+      document.getElementById('apiKeyDialog').close();
+      document.getElementById('youtubeApiKeyInput').value = '';
+    }
+
+    async function syncYoutubeData(ytKey) {
+      try {
+        for (const chKey of Object.keys(CHANNELS)) {
+          await fetchChannelYoutubeData(chKey, ytKey, 25);
+        }
+        loadChannel(currentChannel);
+        showToast('YouTube 데이터를 업데이트했습니다.');
+      } catch (err) {
+        console.warn('YouTube 데이터 동기화 실패:', err);
+        showToast(`YouTube 동기화 실패: ${err.message}`);
+      }
+    }
+
+    async function fetchChannelYoutubeData(chKey, ytKey, targetCount = 25) {
+      const ch = CHANNELS[chKey];
+      const sRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(ch.searchQuery)}&type=video&maxResults=${Math.min(50, targetCount)}&order=viewCount&key=${encodeURIComponent(ytKey)}`);
+      const sData = await sRes.json();
+      if (!sRes.ok) throw new Error(sData.error?.message || `YouTube 검색 요청 실패 (${sRes.status})`);
+      if (!sData.items || !sData.items.length) return;
+
+      const ids = sData.items.map(it => it.id.videoId).filter(Boolean).join(',');
+      const vRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${encodeURIComponent(ytKey)}`);
+      const vData = await vRes.json();
+      if (!vRes.ok) throw new Error(vData.error?.message || `YouTube 영상 요청 실패 (${vRes.status})`);
+      if (!vData.items || !vData.items.length) return;
+
+      vData.items.forEach((v, idx) => {
+        if (idx >= ch.topVideos.length) return;
+        const vCnt = parseInt(v.statistics?.viewCount || '150000', 10);
+        const lCnt = parseInt(v.statistics?.likeCount || '4500', 10);
+        const viewsMan = +(vCnt / 10000).toFixed(1);
+        const kwObj = ch.keywords[idx % ch.keywords.length];
+        ch.topVideos[idx] = {
+          id: v.id,
+          title: v.snippet.title,
+          keyword: kwObj.tag,
+          views: vCnt >= 10000 ? viewsMan + '만 회' : vCnt.toLocaleString() + '회',
+          viewsMan,
+          likes: lCnt >= 10000 ? (lCnt / 10000).toFixed(1) + '만' : lCnt.toLocaleString(),
+          er: ((lCnt / Math.max(vCnt, 1)) * 100 * 1.8).toFixed(1) + '%',
+          uploadDate: (v.snippet.publishedAt || '2026-11-01').slice(0, 10),
+          length: formatDurationISO(v.contentDetails?.duration || 'PT14M20S'),
+          time: `0${(idx % 7) + 1}:${String((idx * 13) % 50 + 10).padStart(2, '0')}`,
+          aiComment: ch.topVideos[idx].aiComment,
+          score: ch.topVideos[idx].score,
+          thumb: v.snippet.thumbnails?.default?.url || ch.topVideos[idx].thumb
+        };
+      });
+    }
+
+    function formatDurationISO(iso) {
+      const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (!m) return '14:20';
+      const hh = m[1] ? m[1] + ':' : '';
+      const mm = String(m[2] || '0').padStart(2, '0');
+      const ss = String(m[3] || '0').padStart(2, '0');
+      return `${hh}${mm}:${ss}`;
+    }
+
+    /* ======================================================================
+       7. 배경 먹물 캔버스 & 학생 카드 / 저장
+       ====================================================================== */
+    let inkCanvas, inkCtx, drops = [];
+    function initInkWashCanvas() {
+      inkCanvas = document.getElementById('inkCanvas');
+      if (!inkCanvas) return;
+      inkCtx = inkCanvas.getContext('2d');
+      for (let i = 0; i < 12; i++) drops.push(makeInkDrop(Math.random() * 1600, Math.random() * 900, false));
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(renderInkWash);
+    }
+    function makeInkDrop(x, y, b) {
+      return { x, y, r: b ? 14 : 24, alpha: b ? .22 : .06, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, color: Math.random() > .8 ? '#B82925' : '#1C1B18', decay: b ? .004 : .0002 };
+    }
+    function spawnInkBurst(x, y) { for (let i = 0; i < 6; i++) drops.push(makeInkDrop(x, y, true)); }
+    function renderInkWash() {
+      if (!inkCtx) return;
+      inkCtx.clearRect(0, 0, 1600, 900);
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const p = drops[i];
+        p.x += p.vx; p.y += p.vy; p.r += .1; p.alpha -= p.decay;
+        if (p.alpha <= 0) { drops.splice(i, 1); continue; }
+        inkCtx.save(); inkCtx.beginPath(); inkCtx.arc(p.x, p.y, p.r, 0, 6.283);
+        inkCtx.fillStyle = p.color; inkCtx.globalAlpha = p.alpha; inkCtx.fill(); inkCtx.restore();
+      }
+      if (drops.length < 10) drops.push(makeInkDrop(Math.random() * 1600, Math.random() * 900, false));
+      requestAnimationFrame(renderInkWash);
+    }
+
+    function toggleTour() { tourTimer ? stopTour() : startTour(); }
+    function startTour() {
+      const btn = document.getElementById('tourBtn');
+      btn.classList.add('on');
+      btn.querySelector('span').textContent = '순회 중지';
+      const keys = Object.keys(CHANNELS), dur = 8000;
+      let t0 = performance.now();
+      const bar = document.getElementById('tourBar');
+      (function frame(t) {
+        const p = Math.min(1, (t - t0) / dur);
+        bar.style.width = (p * 100) + '%';
+        if (p >= 1) {
+          selectChannel(keys[(keys.indexOf(currentChannel) + 1) % keys.length]);
+          t0 = performance.now();
+        }
+        tourRaf = requestAnimationFrame(frame);
+      })(t0);
+      tourTimer = true;
+    }
+    function stopTour() {
+      if (!tourTimer) return;
+      cancelAnimationFrame(tourRaf);
+      tourTimer = null;
+      const btn = document.getElementById('tourBtn');
+      btn.classList.remove('on');
+      btn.querySelector('span').textContent = '자동 순회';
+      document.getElementById('tourBar').style.width = '0';
+    }
+
+    function playIntro() {
+      const i = document.getElementById('intro');
+      if (!i) return;
+      i.classList.remove('open');
+      i.style.display = 'block';
+      setTimeout(() => { i.classList.add('open'); stampEffect(); spawnInkBurst(800, 450); }, 900);
+      setTimeout(() => { i.style.display = 'none'; }, 1900);
+    }
+    function replayIntro() { playIntro(); loadChannel(currentChannel); }
+
+    function handlePhotoUpload(e) {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = ev => {
+        document.getElementById('studentPhoto').src = ev.target.result;
+        stampEffect();
+        showToast('증명사진을 적용했습니다.');
+      };
+      r.readAsDataURL(f);
+    }
+    function stampEffect() {
+      const s = document.getElementById('sealStamp');
+      if (!s) return;
+      s.classList.remove('stamp-anim');
+      void s.offsetWidth;
+      s.classList.add('stamp-anim');
+    }
+    function showToast(m) {
+      const t = document.getElementById('toast');
+      if (!t) return;
+      document.getElementById('toastText').textContent = m;
+      t.classList.remove('hidden');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => t.classList.add('hidden'), 2800);
+    }
+  </script>
+</body>
+</html>
